@@ -29,7 +29,7 @@ This README explains the core theory behind CNNs, focusing on convolution and po
 A kernel (also called a filter) is a small matrix of learnable weights that slides over the input. Each filter detects a specific pattern, such as an edge or texture. 
 A layer can have many filters, producing multiple output feature maps (channels).
 
-![kernel_filter.png](./images/kernel_filter_example.png)
+![kernel_filter.png](./images/kernel_filter.png)
 
 ### Stride and Padding
 
@@ -49,7 +49,7 @@ Output height = floor((H + 2P - F) / S) + 1
 
 Output width = floor((W + 2P - F) / S) + 1
 
-![output_size.png](./images/output_size_formula_diagram.png)
+![output_size.png](./images/output_size.png)
 
 When using the same padding and stride = 1, the output remains the same height and width (subject to kernel size).
 
@@ -102,7 +102,7 @@ Continue covering all patches to get a 3x3 output feature map.
 
 Pooling reduces spatial dimensions of feature maps, lowering computation and introducing some translation invariance.
 
-![pooling_layer.png](./images/pooling_layer_visual.png)
+![pooling_layer.png](./images/pooling_layer.png)
 
 ### Max vs Average Pooling
 
