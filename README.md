@@ -179,12 +179,13 @@ This dramatic reduction (from 105M to 35K parameters) is what makes CNNs trainab
 For images with specific centered structure (like faces), different features might need to be learned at different spatial locations. In such cases, a **Locally-Connected Layer** (without parameter sharing) might be used instead.
 
 ---
-
 ## Pooling Basics
 
 ### What Pooling Does
 
 Pooling reduces spatial dimensions of feature maps, lowering computation and introducing translation invariance.
+
+![pooling_layer.png](./images/pooling_layer.png)
 
 ### Max vs Average Pooling
 
