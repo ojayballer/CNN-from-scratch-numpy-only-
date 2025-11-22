@@ -6,6 +6,7 @@
 
 Convolutional Neural Networks (CNNs) changed how machines understand visual data, enabling breakthroughs in image recognition and video analysis. CNNs were first introduced in the late 1980s (LeNet, 1989), but gained widespread practical success with the ImageNet competition in 2012.
 
+**Why not just use Dense Networks?**
 Before CNNs, dense (fully connected) neural networks were the primary approach, but they had critical limitations for images:
 - **Loss of Locality:** Dense networks treat each pixel independently, flattening spatial structure.
 - **Parameter Explosion:** Connecting every pixel to every neuron leads to overfitting and inefficient training.
@@ -24,6 +25,14 @@ This README explains the core theory behind CNNs, focusing on convolution and po
 A kernel (also called a filter) is a small matrix of learnable weights that slides over the input. Each filter detects a specific pattern, such as an edge or texture. A layer can have many filters, producing multiple output feature maps (channels).
 
 ![kernel_filter.png](./images/kernel_filter.png)
+
+### Clarifying Terminology (FAQ)
+- **Are "Kernel" and "Filter" the same thing?**
+  Yes, these terms are often used interchangeably. Technically, a "kernel" is the 2D matrix, and a "filter" is the collection of kernels for all input channels (e.g., a 3x3x3 filter).
+- **How many output channels will I get?**
+  A single filter produces one output channel (feature map). If a layer has $N$ filters, it will produce $N$ output channels.
+- **Does the filter handle color (RGB)?**
+  Yes. The filter depth matches the input depth. For an RGB image (3 channels), the filter is $3 \times 3 \times 3$.
 
 ### Stride and Padding
 
@@ -137,6 +146,15 @@ Pooling reduces spatial dimensions of feature maps, lowering computation and int
 - **Max pooling:** Picks the maximum value in the window.
 - **Average pooling:** Computes the average value.
 - *Note: Pooling layers have zero learnable parameters.*
+
+### Pros and Cons of Pooling
+- **Pros:**
+  - Reduces computation (fewer pixels to process later).
+  - Creates a larger "receptive field" (sees more of the image at once).
+  - Provides robustness to small shifts/distortions.
+- **Cons:**
+  - Loses precise spatial detail (pixel-perfect information is lost).
+  - May hurt tasks needing exact localization (like segmentation).
 
 ### Output Size Formula
 
