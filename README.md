@@ -26,13 +26,10 @@ A kernel (also called a filter) is a small matrix of learnable weights that slid
 
 ![kernel_filter.png](./images/kernel_filter.png)
 
-### Clarifying Terminology (FAQ)
-- **Are "Kernel" and "Filter" the same thing?**
-  Yes, these terms are often used interchangeably. Technically, a "kernel" is the 2D matrix, and a "filter" is the collection of kernels for all input channels (e.g., a 3x3x3 filter).
-- **How many output channels will I get?**
-  A single filter produces one output channel (feature map). If a layer has $N$ filters, it will produce $N$ output channels.
-- **Does the filter handle color (RGB)?**
-  Yes. The filter depth matches the input depth. For an RGB image (3 channels), the filter is $3 \times 3 \times 3$.
+### Clarifying Terminology
+- **Kernel vs Filter:** Often used interchangeably. Technically, a "kernel" is the 2D matrix, and a "filter" is the collection of kernels for all input channels (e.g., a 3x3x3 filter).
+- **Output Channels:** A single filter produces one output channel (feature map). If a layer has $N$ filters, it will produce $N$ output channels.
+- **Color (RGB):** The filter depth always matches the input depth. For an RGB image (3 channels), the filter is $3 \times 3 \times 3$.
 
 ### Stride and Padding
 
@@ -148,13 +145,8 @@ Pooling reduces spatial dimensions of feature maps, lowering computation and int
 - *Note: Pooling layers have zero learnable parameters.*
 
 ### Pros and Cons of Pooling
-- **Pros:**
-  - Reduces computation (fewer pixels to process later).
-  - Creates a larger "receptive field" (sees more of the image at once).
-  - Provides robustness to small shifts/distortions.
-- **Cons:**
-  - Loses precise spatial detail (pixel-perfect information is lost).
-  - May hurt tasks needing exact localization (like segmentation).
+- **Pros:** Reduces computation (fewer pixels), creates larger receptive fields, adds robustness to shifts.
+- **Cons:** Loses precise spatial detail and pixel-perfect localization.
 
 ### Output Size Formula
 
@@ -188,6 +180,15 @@ Input: (32, 32, 3) RGB image
 6.  **Flatten:** $4 \times 4 \times 64$
     - Output: `1024` features
 7.  **Dense:** Output 10
+
+---
+
+## Filter Selection and Redundancy
+
+Why do we choose 32 or 64 filters?
+
+- **Spatial Reduction vs. Depth Increase:** As the image passes through the network, $H$ and $W$ shrink (via Pooling), but we typically increase the number of filters. Early layers (16-32 filters) capture simple lines. Deep layers (64-128 filters) capture complex object parts.
+- **Small Input Redundancy:** Applying 32 filters to a tiny **raw input** (e.g., 4x4 pixels) is inefficient because the input lacks enough information (16 pixels) to generate 32 unique, meaningful features. This leads to duplicate filters or noise.
 
 ---
 
