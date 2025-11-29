@@ -31,6 +31,16 @@ A kernel (also called a filter) is a small matrix of learnable weights that slid
 - **Output Channels:** A single filter produces one output channel (feature map). If a layer has $N$ filters, it will produce $N$ output channels.
 - **Color (RGB):** The filter depth always matches the input depth. For an RGB image (3 channels), the filter is $3 \times 3 \times 3$.
 
+### Mathematical Nuance: Convolution vs. Cross-Correlation
+While deep learning frameworks refer to the sliding window operation as "convolution," there is a subtle mathematical distinction.
+
+1.  **Cross-Correlation:** This is the sliding dot-product operation we typically perform in neural networks (as seen in the "Sliding Window" example below).
+2.  **True Convolution:** Mathematically, a true convolution requires **rotating the kernel by 180 degrees** before sliding it over the input.
+
+$$\text{conv}(I, K) = I * \text{rot180}(K)$$
+
+In the forward pass, we use cross-correlation. However, the concept of "True Convolution" (with the rotation) becomes critical during **Backpropagation** when we calculate gradients for the input layer.
+
 ### Stride and Padding
 
 - **Stride (S):** How far the filter moves between positions.
@@ -39,6 +49,7 @@ A kernel (also called a filter) is a small matrix of learnable weights that slid
 - **Padding (P):** Adding zeros around the input border.
   - **Valid (P=0):** Output is smaller than input.
   - **Same:** Output size matches input size (requires specific padding).
+  - **Full:** A mode used in backpropagation where the kernel slides such that even a single pixel of intersection counts (heavily padded).
 
 ### Output Size Formulas
 
@@ -66,7 +77,7 @@ Suppose an input volume had size **[16x16x20]**. Then using an example receptive
 
 For an input $X$ and a kernel $K$, the output $Y$ at position $(i, j)$ is:
 
-$$Y[i, j] = \sum_{m=0}^{F-1} \sum_{n=0}^{F-1} K[m, n] \cdot X[i + m, j + n]$$
+$$Y[i, j] = \sum_{m=0}^{F-1} \sum_{n=0}^{F-1} K[m, n] \cdot X[i + m, j + n] + Bias$$
 
 *(Note: In practice, deep learning frameworks implement cross-correlation, which is equivalent for learning purposes.)*
 
@@ -81,28 +92,20 @@ $$Y[i, j] = \sum_{m=0}^{F-1} \sum_{n=0}^{F-1} K[m, n] \cdot X[i + m, j + n]$$
 - **Padding:** 0
 
 **The Input Matrix:**
-```
-[[1, 2, 3, 0],
- [0, 1, 2, 3],
- [3, 0, 1, 2],
- [2, 3, 0, 1]]
-```
+[[1, 2, 3, 0], [0, 1, 2, 3], [3, 0, 1, 2], [2, 3, 0, 1]]
+
 
 **The Kernel (Filter):**
-```
-[[ 1,  0],
- [-1,  1]]
-```
+[[ 1, 0], [-1, 1]]
+
 
 **Step 1: Top-Left Patch**
 
 We overlay the kernel on the first 2x2 patch of the input.
 
 Input Patch:
-```
-[[1, 2],
- [0, 1]]
-```
+[[1, 2], [0, 1]]
+
 
 Calculation:
 
@@ -119,10 +122,8 @@ Output Map: `[[2, ?, ?], ...]`
 Move the kernel one pixel to the right.
 
 Input Patch:
-```
-[[2, 3],
- [1, 2]]
-```
+[[2, 3], [1, 2]]
+
 
 Calculation:
 
@@ -139,10 +140,8 @@ Output Map: `[[2, 3, ?], ...]`
 Move the kernel one more pixel to the right.
 
 Input Patch:
-```
-[[3, 0],
- [2, 3]]
-```
+[[3, 0], [2, 3]]
+
 
 Calculation:
 
@@ -179,6 +178,34 @@ This dramatic reduction (from 105M to 35K parameters) is what makes CNNs trainab
 For images with specific centered structure (like faces), different features might need to be learned at different spatial locations. In such cases, a **Locally-Connected Layer** (without parameter sharing) might be used instead.
 
 ---
+
+## Convolutional Layer - Backpropagation
+
+To train the network, we must calculate the gradients of the Loss ($E$) with respect to the trainable parameters (Kernels and Biases) and the Input (to pass the error to the previous layer).
+
+### 1. Gradient w.r.t Kernels (Weights)
+We need to calculate $\frac{\partial E}{\partial K}$.
+The gradient for a specific weight is the sum of gradients from all outputs where that weight contributed.
+* **Operation:** This is mathematically equivalent to the **Cross-Correlation** between the **Input ($X$)** and the **Output Gradient ($\frac{\partial E}{\partial Y}$)**.
+
+$$\frac{\partial E}{\partial K} = X * \frac{\partial E}{\partial Y}$$
+
+### 2. Gradient w.r.t Bias
+The bias is added to every element in the output feature map. Therefore, the gradient w.r.t the bias is simply the sum of all the gradients in the output map.
+
+$$\frac{\partial E}{\partial B} = \sum \frac{\partial E}{\partial Y}$$
+
+### 3. Gradient w.r.t Input ($X$)
+We need to calculate $\frac{\partial E}{\partial X}$ to propagate the error backward.
+* **Intuition:** One pixel in the input affects multiple pixels in the output (due to the sliding window). We must collect the error from all those output pixels back to the input pixel.
+* **Operation:** This corresponds to a **Full Convolution** between the **Output Gradient** and the **Rotated Kernel (180°)**.
+
+$$\frac{\partial E}{\partial X} = \frac{\partial E}{\partial Y} *_{\text{full}} \text{rot180}(K)$$
+
+**Why Rotate?** In the forward pass, the kernel slides over the input. In the backward pass, the error "slides back" to the input. To align the error correctly with the pixels that generated it, the spatial orientation of the kernel must be flipped.
+
+---
+
 ## Pooling Basics
 
 ### What Pooling Does
@@ -203,6 +230,33 @@ Pooling reduces spatial dimensions of feature maps, lowering computation and int
 ### Output Size Formula
 
 $$\text{Output Size} = \lfloor \frac{N + 2P - F}{S} \rfloor + 1$$
+
+---
+
+## Additional Layers & Loss Functions
+
+### Reshape Layer
+The output of a convolutional block is a 3D tensor (Channels, Height, Width). However, standard classification layers (Dense/Fully Connected) expect a 1D column vector.
+* **Forward:** Flattens the 3D block into a 1D vector.
+* **Backward:** Reshapes the 1D gradient vector back into the 3D shape for the convolutional layers.
+* 
+### Binary Cross Entropy Loss
+For binary classification (e.g., Is this digit 0 or 1?), we use Binary Cross Entropy.
+
+$$
+E = -\frac{1}{n}\sum (y_{true} \log(y) + (1-y_{true}) \log(1-y))
+$$
+
+Where $y$ is the predicted value and $y_{true}$ is the true value. The derivative w.r.t the output $y$ (which is fed into the backward pass) is:
+
+$$
+\frac{\partial E}{\partial y} = \frac{1}{n} \left( \frac{1-y_{true}}{1-y} - \frac{y_{true}}{y} \right)
+$$
+
+### Sigmoid Activation
+Since Cross Entropy uses logarithms, we need an activation function bounded between 0 and 1.
+
+$$\sigma(x) = \frac{1}{1 + e^{-x}}$$
 
 ---
 
@@ -296,9 +350,8 @@ Instead of running the original network 36 times at different crops (stride 32 p
 ### Common Layer Patterns
 
 **Standard pattern:**
-```
 INPUT -> [[CONV -> RELU]*N -> POOL?]*M -> [FC -> RELU]*K -> FC
-```
+
 
 Where:
 - N ≥ 0 (usually N ≤ 3): Number of CONV layers before pooling
@@ -374,9 +427,8 @@ For large inputs (e.g., 224x224x3), early layers consume significant memory. Exa
 3. **Miscellaneous:** Image batches, augmented versions, etc.
 
 ### Memory Calculation
-```
 Total values × 4 bytes (float32) / 1024³ = Memory in GB
-```
+
 
 Or × 8 bytes for double precision.
 
@@ -413,4 +465,3 @@ model = models.Sequential([
     layers.Dense(64, activation='relu'),
     layers.Dense(10, activation='softmax'),
 ])
-```
